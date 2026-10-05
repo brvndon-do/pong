@@ -8,8 +8,8 @@ constexpr int screenWidth = 1280;
 constexpr int screenHeight = 720;
 
 TEST_CASE("Test Movement", "[paddle]") {
-    pong::entities::Paddle paddle = pong::paddle::init(
-        pong::paddle::Side::Left, 15.0f, 150.0f, screenWidth, screenHeight);
+    pong::entities::Paddle paddle{pong::paddle::init(
+        pong::paddle::Side::Left, 15.0f, 150.0f, screenWidth, screenHeight)};
 
     float y = paddle.rect.y;
     paddle = pong::paddle::move(paddle, 0.0f, speed, dt, screenHeight);

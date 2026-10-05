@@ -28,18 +28,18 @@ int main() {
     InitWindow(cfg::screen_width, cfg::screen_height, cfg::window_title);
     SetTargetFPS(cfg::fps);
 
-    entities::Paddle player1 =
-        paddle::init(paddle::Side::Left, cfg::paddle_width, cfg::paddle_length,
-                     cfg::screen_width, cfg::screen_height);
+    entities::Paddle player1{paddle::init(paddle::Side::Left, cfg::paddle_width,
+                                          cfg::paddle_length, cfg::screen_width,
+                                          cfg::screen_height)};
 
-    entities::Paddle player2 =
+    entities::Paddle player2{
         paddle::init(paddle::Side::Right, cfg::paddle_width, cfg::paddle_length,
-                     cfg::screen_width, cfg::screen_height);
+                     cfg::screen_width, cfg::screen_height)};
 
     while (!WindowShouldClose()) {
-        const float dt = GetFrameTime();
-        const int player1Dir = getDirection(KEY_W, KEY_S);
-        const int player2Dir = getDirection(KEY_UP, KEY_DOWN);
+        const float dt{GetFrameTime()};
+        const int player1Dir{getDirection(KEY_W, KEY_S)};
+        const int player2Dir{getDirection(KEY_UP, KEY_DOWN)};
 
         // update
         player1 = paddle::move(player1, player1Dir, cfg::paddle_speed, dt,
