@@ -2,5 +2,5 @@
 #include <pong/config.hpp>
 
 TEST_CASE("Configuration Test", "[config]") {
-  STATIC_REQUIRE(pong::config::fps == 60);
+    STATIC_REQUIRE(pong::config::fps == 60);
 }
