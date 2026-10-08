@@ -12,9 +12,9 @@ TEST_CASE("Test Movement", "[paddle]") {
         pong::paddle::Side::Left, 15.0f, 150.0f, screenWidth, screenHeight)};
 
     float y = paddle.rect.y;
-    paddle = pong::paddle::move(paddle, 0.0f, speed, dt, screenHeight);
+    paddle = pong::paddle::move(paddle, 0, speed, dt, screenHeight);
     REQUIRE(paddle.rect.y == y);
 
-    paddle = pong::paddle::move(paddle, 1.0f, speed, dt, screenHeight);
+    paddle = pong::paddle::move(paddle, 1, speed, dt, screenHeight);
     REQUIRE(paddle.rect.y == y + speed * dt);
 }

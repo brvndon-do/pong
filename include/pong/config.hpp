@@ -13,6 +13,10 @@ inline constexpr float paddle_width = 15.0f;
 inline constexpr float paddle_length = 150.0f;
 inline constexpr float paddle_speed = 400.0f; // paddle_speed_px_per_s
 
+inline constexpr float ball_radius = 15.0f;
+inline constexpr float ball_speed = 450.0f;
+inline constexpr Color ball_color = ORANGE;
+
 inline constexpr float dash_width = 15.0f;
 inline constexpr float dash_length = 30.0f;
 inline constexpr float dash_gap = 60.0f;
