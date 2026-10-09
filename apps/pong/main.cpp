@@ -66,6 +66,14 @@ int main() {
         ball = ball::bouncePaddle(ball, player1);
         ball = ball::bouncePaddle(ball, player2);
 
+        // TODO: this is a lazy way to reset the ball when it goes out of
+        // bounds. this doesn't capture which player scored.
+        if (ball.pos.x < 0 || ball.pos.x > cfg::screen_width) {
+            ball = ball::init(
+                cfg::ball_radius, static_cast<pong::ball::Direction>(dist(gen)),
+                cfg::ball_speed, cfg::screen_width, cfg::screen_height);
+        }
+
         // draw
         BeginDrawing();
 

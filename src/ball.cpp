@@ -1,5 +1,4 @@
 #include <cmath>
-#include <cstdlib>
 #include <pong/ball.hpp>
 #include <pong/entities.hpp>
 #include <raylib.h>
