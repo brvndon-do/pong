@@ -1,4 +1,4 @@
-add_library(pong_core STATIC paddle.cpp ball.cpp)
+add_library(pong_core STATIC paddle.cpp ball.cpp game.cpp)
 
 target_include_directories(pong_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
