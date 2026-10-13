@@ -20,7 +20,7 @@ void drawCenterLine() {
     for (float y = 0; y < cfg::screen_height;
          y += (cfg::dash_gap + cfg::dash_length)) {
         DrawRectangleRec({.x = (static_cast<float>(cfg::screen_width) / 2.0f) -
-                               (cfg::dash_width / 2),
+                               (cfg::dash_width / 2.0f),
                           .y = y,
                           .width = cfg::dash_width,
                           .height = cfg::dash_length},
@@ -46,25 +46,17 @@ entities::Ball updateBall(entities::Ball ball, float dt,
 int main() {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(0, 5);
+    std::uniform_real_distribution<float> dist(-cfg::ball_max_serve_angle_rad,
+                                               cfg::ball_max_serve_angle_rad);
 
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(cfg::screen_width, cfg::screen_height, cfg::window_title);
     SetTargetFPS(cfg::fps);
 
-    game::Scoreboard scoreboard{};
-
-    entities::Paddle player1{paddle::init(paddle::Side::Left, cfg::paddle_width,
-                                          cfg::paddle_length, cfg::screen_width,
-                                          cfg::screen_height)};
-
-    entities::Paddle player2{
-        paddle::init(paddle::Side::Right, cfg::paddle_width, cfg::paddle_length,
-                     cfg::screen_width, cfg::screen_height)};
-
-    entities::Ball ball{ball::init(
-        cfg::ball_radius, static_cast<pong::ball::Direction>(dist(gen)),
-        cfg::ball_speed, cfg::screen_width, cfg::screen_height)};
+    game::GameContext gameContext{game::init(dist(gen))};
+    entities::Paddle& player1{gameContext.player1};
+    entities::Paddle& player2{gameContext.player2};
+    entities::Ball& ball{gameContext.ball};
 
     while (!WindowShouldClose()) {
         const float dt{GetFrameTime()};
@@ -79,20 +71,30 @@ int main() {
 
         ball = updateBall(ball, dt, player1, player2);
 
-        std::optional<paddle::Side> scoringSide{
+        const std::optional<paddle::Side> scoringSide{
             game::getScoringSide(ball, cfg::screen_width)};
         if (scoringSide) {
-            if (scoringSide == paddle::Side::Left) {
-                ball = ball::init(cfg::ball_radius, ball::Direction::Left,
-                                  cfg::ball_speed, cfg::screen_width,
-                                  cfg::screen_height);
-                ++scoreboard.player1;
-            } else { // Side::Right
-                ball = ball::init(cfg::ball_radius, ball::Direction::Right,
-                                  cfg::ball_speed, cfg::screen_width,
-                                  cfg::screen_height);
-                ++scoreboard.player2;
+            ball = ball::init(cfg::ball_radius, *scoringSide, dist(gen),
+                              cfg::ball_speed, cfg::screen_width,
+                              cfg::screen_height);
+
+            switch (*scoringSide) {
+            case paddle::Side::Left:
+                ++gameContext.player1Score;
+                break;
+            case paddle::Side::Right:
+                ++gameContext.player2Score;
+                break;
             }
+        }
+
+        if (gameContext.player1Score >= cfg::winning_score ||
+            gameContext.player2Score >= cfg::winning_score) {
+            // TODO: switch game state
+
+            // safe for the object references since this overwrites the object
+            // in place
+            gameContext = game::init(dist(gen));
         }
 
         // draw
@@ -102,15 +104,16 @@ int main() {
 
         drawCenterLine();
 
+        // draw entities
         DrawRectangleRec(player1.rect, cfg::paddle_color);
         DrawRectangleRec(player2.rect, cfg::paddle_color);
         DrawCircleV(ball.pos, ball.radius, cfg::ball_color);
 
-        // scoreboard
+        // draw scoreboard
         const std::string player1Score{
-            std::format("Player 1: {}", scoreboard.player1)};
+            std::format("Player 1: {}", gameContext.player1Score)};
         const std::string player2Score{
-            std::format("Player 2: {}", scoreboard.player2)};
+            std::format("Player 2: {}", gameContext.player2Score)};
 
         DrawText(player1Score.c_str(), cfg::text_font_gap, cfg::text_font_gap,
                  cfg::text_font_size, cfg::text_color);

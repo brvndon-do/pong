@@ -1,11 +1,10 @@
 #pragma once
 
 #include <pong/entities.hpp>
+#include <pong/paddle.hpp>
 
 namespace pong::ball {
-enum class Direction { LeftUp, Left, LeftDown, RightUp, Right, RightDown };
-
-[[nodiscard]] entities::Ball init(float radius, Direction startingDirection,
+[[nodiscard]] entities::Ball init(float radius, paddle::Side side, float angle,
                                   float speed, int screenWidth,
                                   int screenHeight);
 

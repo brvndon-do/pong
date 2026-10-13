@@ -1,42 +1,21 @@
 #include <cmath>
 #include <pong/ball.hpp>
 #include <pong/entities.hpp>
+#include <pong/paddle.hpp>
 #include <raylib.h>
 #include <raymath.h>
 
 namespace pong::ball {
-entities::Ball init(float radius, Direction startingDirection, float speed,
+entities::Ball init(float radius, paddle::Side side, float angle, float speed,
                     int screenWidth, int screenHeight) {
     Vector2 startPos{screenWidth / 2.0f, screenHeight / 2.0f};
-    Vector2 velocity{};
+    Vector2 velocity{std::cos(angle) *
+                         (side == paddle::Side::Left ? -1.0f : 1.0f),
+                     std::sin(angle)};
 
-    switch (startingDirection) {
-    case Direction::LeftUp:
-        velocity = {-1.0f, -0.5f};
-        break;
-    case Direction::Left:
-        velocity = {-1.0f, 0.0f};
-        break;
-    case Direction::LeftDown:
-        velocity = {-1.0f, 0.5f};
-        break;
-    case Direction::RightUp:
-        velocity = {1.0f, -0.5f};
-        break;
-    case Direction::Right:
-        velocity = {1.0f, 0.0f};
-        break;
-    case Direction::RightDown:
-        velocity = {1.0f, 0.5f};
-        break;
-    }
-
-    return {.pos = startPos,
-            .velocity = Vector2Normalize(velocity) * speed,
-            .radius = radius};
+    return {.pos = startPos, .velocity = velocity * speed, .radius = radius};
 }
 
-// TODO: move into "update" function
 entities::Ball move(entities::Ball ball, float dt) {
     ball.pos += ball.velocity * dt;
 

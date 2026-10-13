@@ -7,11 +7,18 @@
 namespace pong::game {
 enum class GameState { Serving, Playing, GameOver };
 
-struct Scoreboard {
-    int player1{};
-    int player2{};
+struct GameContext {
+    entities::Paddle player1{};
+    entities::Paddle player2{};
+    entities::Ball ball{};
+    int player1Score{};
+    int player2Score{};
 };
+
+[[nodiscard]] GameContext init(float initialBallAngle);
 
 [[nodiscard]] std::optional<paddle::Side> getScoringSide(entities::Ball ball,
                                                          int screenWidth);
+
+static_assert(sizeof(GameContext) == 60);
 } // namespace pong::game
