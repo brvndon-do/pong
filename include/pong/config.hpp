@@ -8,6 +8,8 @@ inline constexpr const char* window_title{"Pong"};
 inline constexpr int screen_width{1280};
 inline constexpr int screen_height{720};
 inline constexpr int fps{60};
+inline constexpr const char* start_msg{"Press SPACE to play!"};
+inline constexpr const char* gameover_msg{"Press R to rematch!"};
 
 inline constexpr float paddle_width{15.0f};
 inline constexpr float paddle_length{150.0f};

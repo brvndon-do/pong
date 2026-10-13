@@ -7,7 +7,7 @@
 namespace cfg = pong::config;
 
 namespace pong::game {
-GameContext init(float initialBallAngle) {
+GameContext init(float initialBallAngle, GameState startingState) {
     entities::Paddle player1{paddle::init(paddle::Side::Left, cfg::paddle_width,
                                           cfg::paddle_length, cfg::screen_width,
                                           cfg::screen_height)};
@@ -23,6 +23,7 @@ GameContext init(float initialBallAngle) {
     return {.player1 = player1,
             .player2 = player2,
             .ball = ball,
+            .state = startingState,
             .player1Score = 0,
             .player2Score = 0};
 }

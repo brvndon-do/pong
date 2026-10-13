@@ -11,14 +11,15 @@ struct GameContext {
     entities::Paddle player1{};
     entities::Paddle player2{};
     entities::Ball ball{};
+    GameState state{GameState::Serving};
     int player1Score{};
     int player2Score{};
 };
 
-[[nodiscard]] GameContext init(float initialBallAngle);
+[[nodiscard]] GameContext init(float initialBallAngle, GameState startingState);
 
 [[nodiscard]] std::optional<paddle::Side> getScoringSide(entities::Ball ball,
                                                          int screenWidth);
 
-static_assert(sizeof(GameContext) == 60);
+static_assert(sizeof(GameContext) == 64);
 } // namespace pong::game

@@ -41,6 +41,10 @@ entities::Ball updateBall(entities::Ball ball, float dt,
 
     return ball;
 }
+
+int getCenterTextX(const char* msg, int fontSize, int screenWidth) {
+    return (screenWidth / 2) - MeasureText(msg, fontSize) / 2;
+}
 } // namespace
 
 int main() {
@@ -53,48 +57,70 @@ int main() {
     InitWindow(cfg::screen_width, cfg::screen_height, cfg::window_title);
     SetTargetFPS(cfg::fps);
 
-    game::GameContext gameContext{game::init(dist(gen))};
+    game::GameContext gameContext{
+        game::init(dist(gen), game::GameState::Serving)};
     entities::Paddle& player1{gameContext.player1};
     entities::Paddle& player2{gameContext.player2};
     entities::Ball& ball{gameContext.ball};
+    game::GameState& state{gameContext.state};
 
     while (!WindowShouldClose()) {
         const float dt{GetFrameTime()};
         const int player1Dir{getDirection(KEY_W, KEY_S)};
         const int player2Dir{getDirection(KEY_UP, KEY_DOWN)};
 
-        // update
+        // allow players to still position during any state
         player1 = paddle::move(player1, player1Dir, cfg::paddle_speed, dt,
                                cfg::screen_height);
         player2 = paddle::move(player2, player2Dir, cfg::paddle_speed, dt,
                                cfg::screen_height);
 
-        ball = updateBall(ball, dt, player1, player2);
+        // TODO: experimental code design? might need to refactor.
+        switch (state) {
+        case game::GameState::Serving: {
+            if (IsKeyPressed(KEY_SPACE))
+                state = game::GameState::Playing;
 
-        const std::optional<paddle::Side> scoringSide{
-            game::getScoringSide(ball, cfg::screen_width)};
-        if (scoringSide) {
-            ball = ball::init(cfg::ball_radius, *scoringSide, dist(gen),
-                              cfg::ball_speed, cfg::screen_width,
-                              cfg::screen_height);
-
-            switch (*scoringSide) {
-            case paddle::Side::Left:
-                ++gameContext.player1Score;
-                break;
-            case paddle::Side::Right:
-                ++gameContext.player2Score;
-                break;
-            }
+            break;
         }
+        case game::GameState::Playing: {
+            ball = updateBall(ball, dt, player1, player2);
 
-        if (gameContext.player1Score >= cfg::winning_score ||
-            gameContext.player2Score >= cfg::winning_score) {
-            // TODO: switch game state
+            const std::optional<paddle::Side> scoringSide{
+                game::getScoringSide(ball, cfg::screen_width)};
+            if (scoringSide) {
+                ball = ball::init(cfg::ball_radius, *scoringSide, dist(gen),
+                                  cfg::ball_speed, cfg::screen_width,
+                                  cfg::screen_height);
 
-            // safe for the object references since this overwrites the object
-            // in place
-            gameContext = game::init(dist(gen));
+                switch (*scoringSide) {
+                case paddle::Side::Left:
+                    ++gameContext.player1Score;
+                    break;
+                case paddle::Side::Right:
+                    ++gameContext.player2Score;
+                    break;
+                }
+            }
+
+            if (gameContext.player1Score >= cfg::winning_score ||
+                gameContext.player2Score >= cfg::winning_score) {
+                state = game::GameState::GameOver;
+            }
+
+            break;
+        }
+        case game::GameState::GameOver: {
+            if (IsKeyPressed(KEY_R)) {
+                state = game::GameState::Playing;
+
+                // safe for the object references since this overwrites the
+                // object in place
+                gameContext = game::init(dist(gen), game::GameState::Playing);
+            }
+
+            break;
+        }
         }
 
         // draw
@@ -107,7 +133,35 @@ int main() {
         // draw entities
         DrawRectangleRec(player1.rect, cfg::paddle_color);
         DrawRectangleRec(player2.rect, cfg::paddle_color);
-        DrawCircleV(ball.pos, ball.radius, cfg::ball_color);
+
+        switch (state) {
+        case game::GameState::Playing:
+            // draw only when state is playing
+            DrawCircleV(ball.pos, ball.radius, cfg::ball_color);
+            break;
+        case game::GameState::Serving:
+            DrawText(cfg::start_msg,
+                     getCenterTextX(cfg::start_msg, cfg::text_font_size,
+                                    cfg::screen_width),
+                     (cfg::screen_height / 2), cfg::text_font_size,
+                     cfg::text_color);
+            break;
+        case game::GameState::GameOver: {
+            // TODO: this is hard coded to Player1/2 for now. refactor when CLI
+            // args are supported
+            const std::string winningPlayer =
+                gameContext.player1Score >= 5 ? "Player 1" : "Player 2";
+            const std::string winnerText =
+                std::format("{} wins! {}", winningPlayer, cfg::gameover_msg);
+
+            DrawText(winnerText.c_str(),
+                     getCenterTextX(winnerText.c_str(), cfg::text_font_size,
+                                    cfg::screen_width),
+                     cfg::screen_height / 2, cfg::text_font_size,
+                     cfg::text_color);
+            break;
+        }
+        }
 
         // draw scoreboard
         const std::string player1Score{
