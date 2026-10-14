@@ -10,7 +10,7 @@
         "request": "launch",
         "preLaunchTask": "CMake: workflow",
         "program": "${workspaceFolder}/build/debug/apps/pong/pong",
-        "args": [],
+        "args": ["-p1", "brandon"],
         "stopAtEntry": false,
         "cwd": "${fileDirname}",
         "environment": [],
