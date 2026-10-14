@@ -32,16 +32,14 @@ parseArgs(std::span<const std::string_view> args) {
 
     for (std::size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "-p1") {
-            if (const auto nextToken{nextValue(args, i)};
-                nextToken.has_value()) {
+            if (const auto nextToken{nextValue(args, i)}; nextToken.has_value())
                 userSettings.player1Name = *nextToken;
-            } else
+            else
                 return std::unexpected{nextToken.error()};
         } else if (args[i] == "-p2") {
-            if (const auto nextToken{nextValue(args, i)};
-                nextToken.has_value()) {
+            if (const auto nextToken{nextValue(args, i)}; nextToken.has_value())
                 userSettings.player2Name = *nextToken;
-            } else
+            else
                 return std::unexpected{nextToken.error()};
         } else
             return std::unexpected{std::format("Unknown flag: {}", args[i])};

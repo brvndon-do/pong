@@ -90,7 +90,6 @@ int main(int argc, char* argv[]) {
         player2 = paddle::move(player2, player2Dir, cfg::paddle_speed, dt,
                                cfg::screen_height);
 
-        // TODO: experimental code design? might need to refactor.
         switch (state) {
         case game::GameState::Serving: {
             if (IsKeyPressed(KEY_SPACE))
