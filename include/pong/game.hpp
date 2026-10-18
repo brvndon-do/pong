@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <pong/entities.hpp>
+#include <pong/input.hpp>
 #include <pong/paddle.hpp>
 
 namespace pong::game {
@@ -20,6 +21,10 @@ struct GameContext {
 
 [[nodiscard]] std::optional<paddle::Side> getScoringSide(entities::Ball ball,
                                                          int screenWidth);
+
+[[nodiscard]] GameContext update(GameContext context,
+                                 input::InputState inputState, float dt,
+                                 float servingAngle);
 
 static_assert(sizeof(GameContext) == 64);
 } // namespace pong::game

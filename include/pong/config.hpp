@@ -10,6 +10,9 @@ inline constexpr int screen_height{720};
 inline constexpr int fps{60};
 inline constexpr const char* start_msg{"Press SPACE to play!"};
 inline constexpr const char* gameover_msg{"Press R to rematch!"};
+inline constexpr float dt_max{0.25f};
+inline constexpr float tick_rate{60.0f};
+inline constexpr float fixed_dt{1.0f / tick_rate};
 
 inline constexpr float paddle_width{15.0f};
 inline constexpr float paddle_length{150.0f};
