@@ -1,12 +1,14 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <pong/entities.hpp>
 #include <pong/input.hpp>
 #include <pong/paddle.hpp>
+#include <type_traits>
 
 namespace pong::game {
-enum class GameState { Serving, Playing, GameOver };
+enum class GameState : std::uint8_t { Serving, Playing, GameOver };
 
 struct GameContext {
     entities::Paddle player1{};
@@ -27,4 +29,6 @@ struct GameContext {
                                  float servingAngle);
 
 static_assert(sizeof(GameContext) == 64);
+static_assert(std::is_trivially_copyable_v<GameContext>);
+
 } // namespace pong::game
