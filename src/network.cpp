@@ -77,8 +77,8 @@ Socket::createClient(const Endpoint& endpoint) {}
 
 std::expected<Socket, std::string> Socket::accept() {}
 
-int Socket::fd() const { return fd_; }
+int Socket::fd() const noexcept { return fd_; }
 
-bool Socket::isValid() const { return fd_ != -1; }
+bool Socket::isValid() const noexcept { return fd_ != -1; }
 
 } // namespace pong::network
