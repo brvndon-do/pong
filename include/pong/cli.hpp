@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <expected>
+#include <pong/network.hpp>
 #include <span>
 #include <string>
 #include <string_view>
@@ -9,18 +9,13 @@
 
 namespace pong::cli {
 
-struct Endpoint {
-    std::string address;
-    std::uint16_t port{0};
-};
-
 struct HostSettings {
-    Endpoint endpoint{};
+    network::Endpoint endpoint{};
     std::string playerName{"Player 1"};
 };
 
 struct ClientSettings {
-    Endpoint endpoint{};
+    network::Endpoint endpoint{};
     std::string playerName{"Player 2"};
 };
 
