@@ -28,14 +28,33 @@ public:
 
     ~Socket();
 
-    [[nodiscard]] static std::expected<Socket, std::string>
-    createHost(const Endpoint& endpoint);
-    [[nodiscard]] static std::expected<Socket, std::string>
-    createClient(const Endpoint& endpoint);
-
-    [[nodiscard]] std::expected<Socket, std::string> accept();
-
     [[nodiscard]] int fd() const noexcept;
     [[nodiscard]] bool isValid() const noexcept;
+};
+
+class Connection {
+    friend class Listener;
+
+private:
+    Socket s_{};
+
+    explicit Connection(Socket s);
+
+public:
+    [[nodiscard]] static std::expected<Connection, std::string>
+    createClient(const Endpoint& endpoint);
+};
+
+class Listener {
+private:
+    Socket s_{};
+
+    explicit Listener(Socket s);
+
+public:
+    [[nodiscard]] static std::expected<Listener, std::string>
+    createHost(const Endpoint& endpoint);
+
+    [[nodiscard]] std::expected<Connection, std::string> accept();
 };
 } // namespace pong::network

@@ -41,6 +41,8 @@ createSocketAddr(const Endpoint& endpoint) {
 }
 } // namespace
 
+// Socket
+
 // explicit
 Socket::Socket(int fd) : fd_{fd} {}
 
@@ -62,8 +64,41 @@ Socket::~Socket() {
         ::close(fd_);
 }
 
-std::expected<Socket, std::string>
-Socket::createHost(const Endpoint& endpoint) {
+int Socket::fd() const noexcept { return fd_; }
+
+bool Socket::isValid() const noexcept { return fd_ != -1; }
+
+// Connection
+
+Connection::Connection(Socket s) : s_{std::move(s)} {}
+
+std::expected<Connection, std::string>
+Connection::createClient(const Endpoint& endpoint) {
+    auto s{createSocket()};
+    if (!s.has_value())
+        return std::unexpected{s.error()};
+
+    auto addr{createSocketAddr(endpoint)};
+    if (!addr.has_value())
+        return std::unexpected{addr.error()};
+
+    int connectrc{::connect(s->fd(),
+                            reinterpret_cast<const sockaddr*>(&addr.value()),
+                            sizeof(sockaddr_in))};
+
+    if (connectrc == -1)
+        return std::unexpected{std::format("socket: connect failed; err: {}",
+                                           std::strerror(errno))};
+
+    return Connection{std::move(s).value()};
+}
+
+// Listener
+
+Listener::Listener(Socket s) : s_{std::move(s)} {}
+
+std::expected<Listener, std::string>
+Listener::createHost(const Endpoint& endpoint) {
     const int optval{1};
 
     auto s{createSocket()};
@@ -81,8 +116,8 @@ Socket::createHost(const Endpoint& endpoint) {
     if (!addr.has_value())
         return std::unexpected{addr.error()};
 
-    int bindrc{::bind(s->fd(), reinterpret_cast<const sockaddr*>(&addr),
-                      sizeof(addr))};
+    int bindrc{::bind(s->fd(), reinterpret_cast<const sockaddr*>(&addr.value()),
+                      sizeof(sockaddr_in))};
     if (bindrc == -1)
         return std::unexpected{
             std::format("socket: bind failed; err: {}", std::strerror(errno))};
@@ -93,41 +128,16 @@ Socket::createHost(const Endpoint& endpoint) {
         return std::unexpected{std::format("socket: listen failed; err: {}",
                                            std::strerror(errno))};
 
-    return s;
+    return Listener{std::move(s).value()};
 }
 
-std::expected<Socket, std::string>
-Socket::createClient(const Endpoint& endpoint) {
-    auto s{createSocket()};
-    if (!s.has_value())
-        return std::unexpected{s.error()};
-
-    auto addr{createSocketAddr(endpoint)};
-    if (!addr.has_value())
-        return std::unexpected{addr.error()};
-
-    int connectrc{::connect(s->fd(),
-                            reinterpret_cast<const sockaddr*>(&addr.value()),
-                            sizeof(sockaddr_in))};
-
-    if (connectrc == -1)
-        return std::unexpected{std::format("socket: connect failed; err: {}",
-                                           std::strerror(errno))};
-
-    return s;
-}
-
-std::expected<Socket, std::string> Socket::accept() {
-    int sfd{::accept(fd_, nullptr, nullptr)};
+std::expected<Connection, std::string> Listener::accept() {
+    int sfd{::accept(s_.fd(), nullptr, nullptr)};
     if (sfd == -1)
         return std::unexpected{std::format("socket: accept failed; err: {}",
                                            std::strerror(errno))};
 
-    return Socket{sfd};
+    return Connection{Socket{sfd}};
 }
-
-int Socket::fd() const noexcept { return fd_; }
-
-bool Socket::isValid() const noexcept { return fd_ != -1; }
 
 } // namespace pong::network
