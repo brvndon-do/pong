@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <numbers>
 #include <raylib.h>
 
@@ -37,4 +38,5 @@ inline constexpr Color text_color{WHITE};
 
 inline constexpr int winning_score{5};
 inline constexpr Color stage_background{BLACK};
+inline constexpr std::size_t max_player_name{10};
 } // namespace pong::config

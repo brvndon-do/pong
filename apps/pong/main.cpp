@@ -27,7 +27,7 @@ namespace input = pong::input;
 namespace network = pong::network;
 
 namespace {
-enum class Environment { Local, Host, Client };
+enum class Environment : std::uint8_t { Local, Host, Client };
 
 void drawCenterLine() {
     for (float y = 0; y < cfg::screen_height;
@@ -188,9 +188,6 @@ int main(int argc, char* argv[]) {
         servePending |= IsKeyPressed(KEY_SPACE);
         restartPending |= IsKeyPressed(KEY_R);
 
-        const std::int8_t player1Dir{getDirection(KEY_W, KEY_S)};
-        const std::int8_t player2Dir{getDirection(KEY_UP, KEY_DOWN)};
-
         // fixed update
         while (dtAccumulated >= cfg::fixed_dt) {
             // TODO: move building input into a helper func
@@ -204,6 +201,9 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case Environment::Local: {
+                const std::int8_t player1Dir{getDirection(KEY_W, KEY_S)};
+                const std::int8_t player2Dir{getDirection(KEY_UP, KEY_DOWN)};
+
                 inputState = {
                     .player1 = input::PlayerInput{.direction = player1Dir,
                                                   .serve = servePending,
