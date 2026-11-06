@@ -1,10 +1,15 @@
+#include "pong/network_protocol.hpp"
 #include <arpa/inet.h>
+#include <array>
 #include <cerrno>
+#include <cstddef>
 #include <cstring>
 #include <expected>
 #include <format>
 #include <netinet/in.h>
+#include <optional>
 #include <pong/network.hpp>
+#include <span>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <utility>
@@ -91,6 +96,120 @@ Connection::createClient(const Endpoint& endpoint) {
                                            std::strerror(errno))};
 
     return Connection{std::move(s).value()};
+}
+
+std::expected<void, std::string>
+Connection::send(std::span<const std::byte> data) {
+    ssize_t total{0}, written{0}, bytesLeft{static_cast<ssize_t>(data.size())};
+
+    /*
+        another cool way to write this is:
+            while (!data.empty())
+                send data.data() and data.size()
+                if successful write
+                    data = data.subspan(written)
+
+        subspan(n) returns a view that skips the first n bytes
+
+        i'm choosing to leave it since that's how i learned it from beej's
+       networking guide
+    */
+
+    while (bytesLeft > 0) {
+        written = ::send(s_.fd(), data.data() + total, bytesLeft, MSG_NOSIGNAL);
+        if (written == -1)
+            return std::unexpected{std::format(
+                "socket: error during send; err: {}", std::strerror(errno))};
+
+        total += written;
+        bytesLeft -= written;
+    }
+
+    return {};
+}
+
+std::expected<void, std::string> Connection::receive() {
+    std::array<std::byte, 256> buf{};
+    ssize_t bytesReceived{::recv(s_.fd(), buf.data(), buf.size(), 0)};
+
+    // peer closed connection
+    if (bytesReceived == 0)
+        return std::unexpected{"socket: connection closed"};
+
+    if (bytesReceived == -1) {
+        // nothing to read
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return {};
+
+        return std::unexpected{std::format("socket: unexpected error; err: {}",
+                                           std::strerror(errno))};
+    }
+
+    // bytesReceived > 0
+    receiveBuffer_.insert(receiveBuffer_.end(), buf.begin(),
+                          buf.begin() + bytesReceived);
+
+    return {};
+}
+
+std::expected<std::optional<protocol::Message>, std::string>
+Connection::nextMessage() {
+    if (receiveBuffer_.empty())
+        return std::nullopt;
+
+    protocol::MessageType messageType{
+        static_cast<protocol::MessageType>(receiveBuffer_[0])};
+
+    auto payloadSize{protocol::mapPayloadSz(messageType)};
+
+    if (!payloadSize.has_value())
+        return std::unexpected{"payload: unknown tag"};
+
+    const size_t totalPayloadSize{*payloadSize + protocol::header_sz};
+
+    if (receiveBuffer_.size() < totalPayloadSize)
+        return std::nullopt; // bytes stay in buffer until more arrive
+
+    // extract payload from buffer (exclude header byte)
+    std::span payloadSpan{
+        std::span{receiveBuffer_}.subspan(protocol::header_sz, *payloadSize)};
+    protocol::Message decodedPayload{};
+
+    switch (messageType) {
+    case protocol::MessageType::Greet: {
+        if (auto decoded{protocol::decodeGreetPayload(payloadSpan)};
+            decoded.has_value())
+            decodedPayload = *decoded;
+        else
+            return std::unexpected{"payload: decoding greet failed"};
+
+        break;
+    }
+    case protocol::MessageType::Input: {
+        if (auto decoded{protocol::decodeInputPayload(payloadSpan)};
+            decoded.has_value())
+            decodedPayload = *decoded;
+        else
+            return std::unexpected{"payload: decoding input failed"};
+
+        break;
+    }
+    case protocol::MessageType::Snapshot: {
+        if (auto decoded{protocol::decodeSnapshotPayload(payloadSpan)};
+            decoded.has_value())
+            decodedPayload = *decoded;
+        else
+            return std::unexpected{"payload: decoding snapshot failed"};
+
+        break;
+    }
+    }
+
+    // remove message from front of buffer
+    receiveBuffer_.erase(receiveBuffer_.begin(),
+                         receiveBuffer_.begin() + totalPayloadSize);
+
+    return decodedPayload;
 }
 
 // Listener

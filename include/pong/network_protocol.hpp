@@ -6,6 +6,7 @@
 #include <optional>
 #include <pong/config.hpp>
 #include <span>
+#include <variant>
 
 namespace pong::network::protocol {
 enum class MessageType : std::uint8_t { Greet, Input, Snapshot };
@@ -36,6 +37,8 @@ struct SnapshotPayload {
     std::uint8_t player1Score{};
     std::uint8_t player2Score{};
 };
+
+using Message = std::variant<GreetPayload, InputPayload, SnapshotPayload>;
 
 [[nodiscard]] constexpr std::optional<std::size_t>
 mapPayloadSz(MessageType messageType) {
