@@ -9,7 +9,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(pong_tests test_paddle.cpp test_ball.cpp)
+add_executable(pong_tests test_paddle.cpp test_ball.cpp
+    test_protocols.cpp)
 
 target_link_libraries(pong_tests PRIVATE pong_core pong_warnings Catch2::Catch2WithMain)
 

@@ -12,6 +12,7 @@ enum class MessageType : std::uint8_t { Greet, Input, Snapshot };
 
 inline constexpr std::size_t header_sz{1};
 inline constexpr std::size_t greet_payload_sz{1 + config::max_player_name};
+inline constexpr std::size_t name_offset{1};
 inline constexpr std::size_t input_payload_sz{3};
 inline constexpr std::size_t snapshot_payload_sz{19};
 

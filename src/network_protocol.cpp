@@ -38,7 +38,7 @@ encodeGreetPayload(GreetPayload payload) {
         static_cast<std::byte>(payload.nameLength)};
 
     for (std::size_t i = 0; i < config::max_player_name; ++i) {
-        buffer[header_sz + 1 + i] =
+        buffer[header_sz + name_offset + i] =
             static_cast<std::byte>(payload.playerName[i]);
     }
 
@@ -55,8 +55,8 @@ decodeGreetPayload(std::span<const std::byte> data) {
         return std::nullopt;
 
     std::array<char, config::max_player_name> playerName{};
-    for (std::size_t i = 0; i < config::max_player_name; ++i) {
-        playerName[i] = static_cast<char>(data[header_sz + i]);
+    for (std::size_t i = 0; i < nameLength; ++i) {
+        playerName[i] = static_cast<char>(data[name_offset + i]);
     }
 
     return GreetPayload{.nameLength = nameLength, .playerName = playerName};
