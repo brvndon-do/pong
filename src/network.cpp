@@ -1,4 +1,3 @@
-#include "pong/network_protocol.hpp"
 #include <arpa/inet.h>
 #include <array>
 #include <cerrno>
@@ -9,6 +8,7 @@
 #include <netinet/in.h>
 #include <optional>
 #include <pong/network.hpp>
+#include <pong/network_protocol.hpp>
 #include <span>
 #include <sys/socket.h>
 #include <unistd.h>

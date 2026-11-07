@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <expected>
@@ -11,6 +12,7 @@
 #include <pong/game.hpp>
 #include <pong/input.hpp>
 #include <pong/network.hpp>
+#include <pong/network_protocol.hpp>
 #include <random>
 #include <raylib.h>
 #include <string>
@@ -25,6 +27,7 @@ namespace entities = pong::entities;
 namespace game = pong::game;
 namespace input = pong::input;
 namespace network = pong::network;
+namespace protocol = pong::network::protocol;
 
 namespace {
 enum class Environment : std::uint8_t { Local, Host, Client };
@@ -149,7 +152,9 @@ int main(int argc, char* argv[]) {
                 if (!connection.has_value())
                     return std::unexpected{connection.error()};
 
-                player2Name = arg.playerName;
+                // player2Name = arg.playerName;
+                // use player1Name as placeholder before netcode setup
+                player1Name = arg.playerName;
                 peer = std::move(connection).value();
 
                 return Environment::Client;
@@ -171,8 +176,64 @@ int main(int argc, char* argv[]) {
 
     const Environment env{setupResult.value()};
 
-    // TODO: setup network play
+    // netcode setup
+    if (env != Environment::Local) {
+        if (env == Environment::Host) {
+            auto accepted{listener->accept()};
+            if (!accepted.has_value()) {
+                std::cerr << accepted.error() << '\n';
+                return EXIT_FAILURE;
+            }
 
+            peer = std::move(accepted).value();
+        }
+
+        // TODO: this seems messy, cleanup?
+        std::array<char, cfg::max_player_name> playerName{};
+        std::ranges::copy(std::string_view{player1Name}, playerName.begin());
+        protocol::GreetPayload greetPayload{
+            .nameLength = static_cast<std::uint8_t>(player1Name.length()),
+            .playerName = playerName};
+        auto encodedGreetPayload{protocol::encodeGreetPayload(greetPayload)};
+        if (auto res{peer->send(encodedGreetPayload)}; !res.has_value()) {
+            std::cerr << res.error() << '\n';
+            return EXIT_FAILURE;
+        }
+
+        // both host/client loops until greet message appears
+        while (true) {
+            if (auto res{peer->receive()}; !res.has_value()) {
+                std::cerr << res.error() << '\n';
+                return EXIT_FAILURE;
+            }
+
+            auto expectedMessage{peer->nextMessage()};
+            if (!expectedMessage->has_value()) {
+                std::cerr << expectedMessage.error() << '\n';
+                return EXIT_FAILURE;
+            }
+
+            auto message{expectedMessage->value()};
+            if (std::holds_alternative<protocol::GreetPayload>(message)) {
+                auto data{std::get<protocol::GreetPayload>(message)};
+                std::string opponentName{
+                    data.nameLength > 0 ? std::string{data.playerName.begin(),
+                                                      data.playerName.end()}
+                                        : "Opponent"};
+
+                if (env == Environment::Host)
+                    player2Name = opponentName;
+                else if (env == Environment::Client) {
+                    player2Name = player1Name;
+                    player1Name = opponentName;
+                }
+
+                break;
+            }
+        }
+    }
+
+    // window + game loop
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(cfg::screen_width, cfg::screen_height, cfg::window_title);
     SetTargetFPS(cfg::fps);
