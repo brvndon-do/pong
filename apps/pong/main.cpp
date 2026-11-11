@@ -13,6 +13,7 @@
 #include <pong/input.hpp>
 #include <pong/network.hpp>
 #include <pong/network_protocol.hpp>
+#include <pong/session.hpp>
 #include <random>
 #include <raylib.h>
 #include <string>
@@ -28,6 +29,7 @@ namespace game = pong::game;
 namespace input = pong::input;
 namespace network = pong::network;
 namespace protocol = pong::network::protocol;
+namespace session = pong::session;
 
 namespace {
 enum class Environment : std::uint8_t { Local, Host, Client };
@@ -121,116 +123,17 @@ int main(int argc, char* argv[]) {
     std::uniform_real_distribution<float> dist(-cfg::ball_max_serve_angle_rad,
                                                cfg::ball_max_serve_angle_rad);
 
-    const auto parsedArgs{
+    auto parsedArgs{
         cli::parseArgs(std::vector<std::string_view>(argv + 1, argv + argc))};
-
     if (!parsedArgs.has_value()) {
         std::cerr << parsedArgs.error() << '\n';
         return EXIT_FAILURE;
     }
 
-    std::optional<network::Listener> listener;
-    std::optional<network::Connection> peer;
-    std::string player1Name;
-    std::string player2Name;
-
-    const std::expected<Environment, std::string> setupResult{std::visit(
-        [&](auto&& arg) -> std::expected<Environment, std::string> {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, cli::HostSettings>) {
-                auto host{network::Listener::createHost(arg.endpoint)};
-                if (!host.has_value())
-                    return std::unexpected{host.error()};
-
-                player1Name = arg.playerName;
-                listener = std::move(host).value();
-
-                return Environment::Host;
-            } else if constexpr (std::is_same_v<T, cli::ClientSettings>) {
-                auto connection{
-                    network::Connection::createClient(arg.endpoint)};
-                if (!connection.has_value())
-                    return std::unexpected{connection.error()};
-
-                // player2Name = arg.playerName;
-                // use player1Name as placeholder before netcode setup
-                player1Name = arg.playerName;
-                peer = std::move(connection).value();
-
-                return Environment::Client;
-            } else if constexpr (std::is_same_v<T, cli::LocalSettings>) {
-                player1Name = arg.player1Name;
-                player2Name = arg.player2Name;
-
-                return Environment::Local;
-            } else {
-                static_assert(false, "unhandled settings type");
-            }
-        },
-        parsedArgs.value())};
-
-    if (!setupResult.has_value()) {
-        std::cerr << setupResult.error() << '\n';
+    auto session{session::createSession(parsedArgs.value())};
+    if (!session.has_value()) {
+        std::cerr << session.error() << '\n';
         return EXIT_FAILURE;
-    }
-
-    const Environment env{setupResult.value()};
-
-    // netcode setup
-    if (env != Environment::Local) {
-        if (env == Environment::Host) {
-            auto accepted{listener->accept()};
-            if (!accepted.has_value()) {
-                std::cerr << accepted.error() << '\n';
-                return EXIT_FAILURE;
-            }
-
-            peer = std::move(accepted).value();
-        }
-
-        // TODO: this seems messy, cleanup?
-        std::array<char, cfg::max_player_name> playerName{};
-        std::ranges::copy(std::string_view{player1Name}, playerName.begin());
-        protocol::GreetPayload greetPayload{
-            .nameLength = static_cast<std::uint8_t>(player1Name.length()),
-            .playerName = playerName};
-        auto encodedGreetPayload{protocol::encodeGreetPayload(greetPayload)};
-        if (auto res{peer->send(encodedGreetPayload)}; !res.has_value()) {
-            std::cerr << res.error() << '\n';
-            return EXIT_FAILURE;
-        }
-
-        // both host/client loops until greet message appears
-        while (true) {
-            if (auto res{peer->receive()}; !res.has_value()) {
-                std::cerr << res.error() << '\n';
-                return EXIT_FAILURE;
-            }
-
-            auto expectedMessage{peer->nextMessage()};
-            if (!expectedMessage->has_value()) {
-                std::cerr << expectedMessage.error() << '\n';
-                return EXIT_FAILURE;
-            }
-
-            auto message{expectedMessage->value()};
-            if (std::holds_alternative<protocol::GreetPayload>(message)) {
-                auto data{std::get<protocol::GreetPayload>(message)};
-                std::string opponentName{
-                    data.nameLength > 0 ? std::string{data.playerName.begin(),
-                                                      data.playerName.end()}
-                                        : "Opponent"};
-
-                if (env == Environment::Host)
-                    player2Name = opponentName;
-                else if (env == Environment::Client) {
-                    player2Name = player1Name;
-                    player1Name = opponentName;
-                }
-
-                break;
-            }
-        }
     }
 
     // window + game loop
@@ -254,14 +157,14 @@ int main(int argc, char* argv[]) {
             // TODO: move building input into a helper func
             input::InputState inputState{};
 
-            switch (env) {
-            case Environment::Host: {
+            switch (session->env) {
+            case session::Environment::Host: {
                 break;
             }
-            case Environment::Client: {
+            case session::Environment::Client: {
                 break;
             }
-            case Environment::Local: {
+            case session::Environment::Local: {
                 const std::int8_t player1Dir{getDirection(KEY_W, KEY_S)};
                 const std::int8_t player2Dir{getDirection(KEY_UP, KEY_DOWN)};
 
@@ -277,7 +180,7 @@ int main(int argc, char* argv[]) {
             }
 
             // client's state comes from host; do not update its gameContext
-            if (env != Environment::Client)
+            if (session->env != session::Environment::Client)
                 gameContext = game::update(gameContext, inputState,
                                            cfg::fixed_dt, dist(gen));
 
@@ -288,7 +191,7 @@ int main(int argc, char* argv[]) {
             dtAccumulated -= cfg::fixed_dt;
         }
 
-        drawGame(gameContext, player1Name, player2Name);
+        drawGame(gameContext, session->player1Name, session->player2Name);
     }
 
     CloseWindow();

@@ -53,17 +53,23 @@ mapPayloadSz(MessageType messageType) {
 
     return std::nullopt;
 }
+
+// greet-related funcs
 [[nodiscard]] std::array<std::byte, header_sz + greet_payload_sz>
 encodeGreetPayload(GreetPayload payload);
 
 [[nodiscard]] std::optional<GreetPayload>
 decodeGreetPayload(std::span<const std::byte> data);
 
+// input-related funcs
+
 [[nodiscard]] std::array<std::byte, header_sz + input_payload_sz>
 encodeInputPayload(InputPayload payload);
 
 [[nodiscard]] std::optional<InputPayload>
 decodeInputPayload(std::span<const std::byte> data);
+
+// snapshot-related funcs
 
 [[nodiscard]] std::array<std::byte, header_sz + snapshot_payload_sz>
 encodeSnapshotPayload(SnapshotPayload payload);
