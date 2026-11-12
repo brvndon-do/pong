@@ -53,6 +53,8 @@ public:
     [[nodiscard]] std::expected<void, std::string> receive();
     [[nodiscard]] std::expected<std::optional<protocol::Message>, std::string>
     nextMessage();
+
+    [[nodiscard]] std::expected<void, std::string> configureRealtime();
 };
 
 class Listener {

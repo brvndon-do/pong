@@ -4,8 +4,10 @@
 #include <cstddef>
 #include <cstring>
 #include <expected>
+#include <fcntl.h>
 #include <format>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <optional>
 #include <pong/network.hpp>
 #include <pong/network_protocol.hpp>
@@ -210,6 +212,25 @@ Connection::nextMessage() {
                          receiveBuffer_.begin() + totalPayloadSize);
 
     return decodedPayload;
+}
+
+std::expected<void, std::string> Connection::configureRealtime() {
+    int flags{::fcntl(s_.fd(), F_GETFL, 0)};
+    if (flags == -1)
+        return std::unexpected{
+            std::format("f_getfl error; err: {}", std::strerror(errno))};
+
+    if (::fcntl(s_.fd(), F_SETFL, flags | O_NONBLOCK) == -1)
+        return std::unexpected{
+            std::format("f_setfl error; err: {}", std::strerror(errno))};
+
+    int optval{1};
+    if (::setsockopt(s_.fd(), IPPROTO_TCP, TCP_NODELAY, &optval,
+                     sizeof(optval)) == -1)
+        return std::unexpected{std::format("setsockopt(TCP_NODELAY); err: {}",
+                                           std::strerror(errno))};
+
+    return {};
 }
 
 // Listener

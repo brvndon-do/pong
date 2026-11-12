@@ -35,7 +35,7 @@ exchangeNames(network::Connection& connection, std::string_view playerName) {
 
         if (*expectedMessage) { // has message; process and let it fall thru to
                                 // receive() if empty
-            auto message{expectedMessage->value()};
+            const auto& message{expectedMessage->value()};
             if (const protocol::GreetPayload* payload{
                     std::get_if<protocol::GreetPayload>(&message)}) {
                 std::string opponentName{
@@ -67,6 +67,9 @@ createSessionFor(const cli::HostSettings& settings) {
     if (!opponentName.has_value())
         return std::unexpected{opponentName.error()};
 
+    if (auto res{accepted->configureRealtime()}; !res.has_value())
+        return std::unexpected{res.error()};
+
     return Session{.player1Name = settings.playerName,
                    .player2Name = std::move(opponentName).value(),
                    .peer = std::move(accepted).value(),
@@ -82,6 +85,9 @@ createSessionFor(const cli::ClientSettings& settings) {
     auto opponentName{exchangeNames(*connection, settings.playerName)};
     if (!opponentName.has_value())
         return std::unexpected{opponentName.error()};
+
+    if (auto res{connection->configureRealtime()}; !res.has_value())
+        return std::unexpected{res.error()};
 
     return Session{.player1Name = std::move(opponentName).value(),
                    .player2Name = settings.playerName,
