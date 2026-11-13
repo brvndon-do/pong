@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <pong/network_protocol.hpp>
 #include <span>
 #include <string>

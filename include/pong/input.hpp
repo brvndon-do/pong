@@ -6,8 +6,8 @@
 namespace pong::input {
 struct PlayerInput {
     std::int8_t direction{0};
-    bool serve;
-    bool restart;
+    bool serve{};
+    bool restart{};
 };
 
 struct InputState {

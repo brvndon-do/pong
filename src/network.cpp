@@ -102,7 +102,7 @@ Connection::createClient(const Endpoint& endpoint) {
 
 std::expected<void, std::string>
 Connection::send(std::span<const std::byte> data) {
-    ssize_t total{0}, written{0}, bytesLeft{static_cast<ssize_t>(data.size())};
+    ssize_t total{}, written{}, bytesLeft{static_cast<ssize_t>(data.size())};
 
     /*
         another cool way to write this is:
@@ -215,7 +215,7 @@ Connection::nextMessage() {
 }
 
 std::expected<void, std::string> Connection::configureRealtime() {
-    int flags{::fcntl(s_.fd(), F_GETFL, 0)};
+    const int flags{::fcntl(s_.fd(), F_GETFL, 0)};
     if (flags == -1)
         return std::unexpected{
             std::format("f_getfl error; err: {}", std::strerror(errno))};
@@ -224,7 +224,7 @@ std::expected<void, std::string> Connection::configureRealtime() {
         return std::unexpected{
             std::format("f_setfl error; err: {}", std::strerror(errno))};
 
-    int optval{1};
+    const int optval{1};
     if (::setsockopt(s_.fd(), IPPROTO_TCP, TCP_NODELAY, &optval,
                      sizeof(optval)) == -1)
         return std::unexpected{std::format("setsockopt(TCP_NODELAY); err: {}",
@@ -245,8 +245,8 @@ Listener::createHost(const Endpoint& endpoint) {
     if (!s.has_value())
         return std::unexpected{s.error()};
 
-    int ssrc{::setsockopt(s->fd(), SOL_SOCKET, SO_REUSEADDR, &optval,
-                          sizeof(optval))};
+    const int ssrc{::setsockopt(s->fd(), SOL_SOCKET, SO_REUSEADDR, &optval,
+                                sizeof(optval))};
     if (ssrc == -1)
         return std::unexpected{
             std::format("socket: setsockopt(SO_REUSEADDR) failed; err: {}",
@@ -256,14 +256,15 @@ Listener::createHost(const Endpoint& endpoint) {
     if (!addr.has_value())
         return std::unexpected{addr.error()};
 
-    int bindrc{::bind(s->fd(), reinterpret_cast<const sockaddr*>(&addr.value()),
-                      sizeof(sockaddr_in))};
+    const int bindrc{::bind(s->fd(),
+                            reinterpret_cast<const sockaddr*>(&addr.value()),
+                            sizeof(sockaddr_in))};
     if (bindrc == -1)
         return std::unexpected{
             std::format("socket: bind failed; err: {}", std::strerror(errno))};
 
     // always 1 client; n = 1
-    int listenrc{::listen(s->fd(), 1)};
+    const int listenrc{::listen(s->fd(), 1)};
     if (listenrc == -1)
         return std::unexpected{std::format("socket: listen failed; err: {}",
                                            std::strerror(errno))};
@@ -272,7 +273,7 @@ Listener::createHost(const Endpoint& endpoint) {
 }
 
 std::expected<Connection, std::string> Listener::accept() {
-    int sfd{::accept(s_.fd(), nullptr, nullptr)};
+    const int sfd{::accept(s_.fd(), nullptr, nullptr)};
     if (sfd == -1)
         return std::unexpected{std::format("socket: accept failed; err: {}",
                                            std::strerror(errno))};

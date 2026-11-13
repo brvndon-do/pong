@@ -16,20 +16,21 @@ namespace protocol = pong::network::protocol;
 
 namespace pong::session {
 namespace {
-std::expected<std::string, std::string>
+[[nodiscard]] std::expected<std::string, std::string>
 exchangeNames(network::Connection& connection, std::string_view playerName) {
     std::array<char, config::max_player_name> name{};
-    std::string_view clampedName{playerName.substr(0, config::max_player_name)};
+    const std::string_view clampedName{
+        playerName.substr(0, config::max_player_name)};
     std::ranges::copy(clampedName, name.begin());
-    protocol::GreetPayload greetPayload{
+    const protocol::GreetPayload greetPayload{
         .nameLength = static_cast<std::uint8_t>(clampedName.length()),
         .playerName = name};
-    auto encodedGreetPayload{protocol::encodeGreetPayload(greetPayload)};
-    if (auto res{connection.send(encodedGreetPayload)}; !res.has_value())
+    const auto encodedGreetPayload{protocol::encodeGreetPayload(greetPayload)};
+    if (const auto res{connection.send(encodedGreetPayload)}; !res.has_value())
         return std::unexpected{res.error()};
 
     while (true) {
-        auto expectedMessage{connection.nextMessage()};
+        const auto expectedMessage{connection.nextMessage()};
         if (!expectedMessage)
             return std::unexpected{expectedMessage.error()};
 
@@ -38,7 +39,7 @@ exchangeNames(network::Connection& connection, std::string_view playerName) {
             const auto& message{expectedMessage->value()};
             if (const protocol::GreetPayload* payload{
                     std::get_if<protocol::GreetPayload>(&message)}) {
-                std::string opponentName{
+                const std::string opponentName{
                     payload->nameLength > 0
                         ? std::string{payload->playerName.data(),
                                       payload->nameLength}
@@ -48,12 +49,12 @@ exchangeNames(network::Connection& connection, std::string_view playerName) {
             }
         }
 
-        if (auto res{connection.receive()}; !res.has_value())
+        if (const auto res{connection.receive()}; !res.has_value())
             return std::unexpected{res.error()};
     }
 }
 
-std::expected<Session, std::string>
+[[nodiscard]] std::expected<Session, std::string>
 createSessionFor(const cli::HostSettings& settings) {
     auto listener{network::Listener::createHost(settings.endpoint)};
     if (!listener.has_value())
@@ -63,11 +64,11 @@ createSessionFor(const cli::HostSettings& settings) {
     if (!accepted.has_value())
         return std::unexpected{accepted.error()};
 
-    auto opponentName{exchangeNames(*accepted, settings.playerName)};
+    const auto opponentName{exchangeNames(*accepted, settings.playerName)};
     if (!opponentName.has_value())
         return std::unexpected{opponentName.error()};
 
-    if (auto res{accepted->configureRealtime()}; !res.has_value())
+    if (const auto res{accepted->configureRealtime()}; !res.has_value())
         return std::unexpected{res.error()};
 
     return Session{.player1Name = settings.playerName,
@@ -76,17 +77,17 @@ createSessionFor(const cli::HostSettings& settings) {
                    .env = Environment::Host};
 }
 
-std::expected<Session, std::string>
+[[nodiscard]] std::expected<Session, std::string>
 createSessionFor(const cli::ClientSettings& settings) {
     auto connection{network::Connection::createClient(settings.endpoint)};
     if (!connection.has_value())
         return std::unexpected{connection.error()};
 
-    auto opponentName{exchangeNames(*connection, settings.playerName)};
+    const auto opponentName{exchangeNames(*connection, settings.playerName)};
     if (!opponentName.has_value())
         return std::unexpected{opponentName.error()};
 
-    if (auto res{connection->configureRealtime()}; !res.has_value())
+    if (const auto res{connection->configureRealtime()}; !res.has_value())
         return std::unexpected{res.error()};
 
     return Session{.player1Name = std::move(opponentName).value(),
@@ -95,7 +96,7 @@ createSessionFor(const cli::ClientSettings& settings) {
                    .env = Environment::Client};
 }
 
-std::expected<Session, std::string>
+[[nodiscard]] std::expected<Session, std::string>
 createSessionFor(const cli::LocalSettings& settings) {
     return Session{.player1Name = settings.player1Name,
                    .player2Name = settings.player2Name,

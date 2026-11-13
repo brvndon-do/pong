@@ -19,4 +19,4 @@ struct Session {
 
 [[nodiscard]] std::expected<Session, std::string>
 createSession(const cli::Settings& settings);
-}; // namespace pong::session
+} // namespace pong::session

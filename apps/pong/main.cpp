@@ -4,6 +4,7 @@
 #include <expected>
 #include <format>
 #include <iostream>
+#include <optional>
 #include <pong/cli.hpp>
 #include <pong/config.hpp>
 #include <pong/entities.hpp>
@@ -82,8 +83,8 @@ void drawGame(const game::GameContext& gameContext,
         const std::string_view winningPlayer{
             gameContext.player1Score >= cfg::winning_score ? player1Name
                                                            : player2Name};
-        const std::string winnerText =
-            std::format("{} wins! {}", winningPlayer, cfg::gameover_msg);
+        const std::string winnerText{
+            std::format("{} wins! {}", winningPlayer, cfg::gameover_msg)};
 
         DrawText(winnerText.c_str(),
                  getCenterTextX(winnerText.c_str(), cfg::text_font_size,
@@ -116,11 +117,11 @@ handleHostUpdate(network::Connection& connection,
                  const game::GameContext& context) {
 
     // update player2 input
-    if (auto res{connection.receive()}; !res.has_value())
+    if (const auto res{connection.receive()}; !res.has_value())
         return std::unexpected{res.error()};
 
     while (true) {
-        auto expectedMessage{connection.nextMessage()};
+        const auto expectedMessage{connection.nextMessage()};
         if (!expectedMessage)
             return std::unexpected{expectedMessage.error()};
 
@@ -137,7 +138,7 @@ handleHostUpdate(network::Connection& connection,
     }
 
     // send snapshot payload after update
-    protocol::SnapshotPayload snapshotPayload{
+    const protocol::SnapshotPayload snapshotPayload{
         .player1PaddleY = context.player1.rect.y,
         .player2PaddleY = context.player2.rect.y,
         .ballX = context.ball.pos.x,
@@ -146,8 +147,8 @@ handleHostUpdate(network::Connection& connection,
         .player1Score = static_cast<std::uint8_t>(context.player1Score),
         .player2Score = static_cast<std::uint8_t>(context.player2Score)};
 
-    auto encodedPayload{protocol::encodeSnapshotPayload(snapshotPayload)};
-    if (auto res{connection.send(encodedPayload)}; !res.has_value())
+    const auto encodedPayload{protocol::encodeSnapshotPayload(snapshotPayload)};
+    if (const auto res{connection.send(encodedPayload)}; !res.has_value())
         return std::unexpected{res.error()};
 
     return {};
@@ -159,11 +160,11 @@ handleClientUpdate(network::Connection& connection,
                    game::GameContext& context) {
 
     // update client's game context
-    if (auto res{connection.receive()}; !res.has_value())
+    if (const auto res{connection.receive()}; !res.has_value())
         return std::unexpected{res.error()};
 
     while (true) {
-        auto expectedMessage{connection.nextMessage()};
+        const auto expectedMessage{connection.nextMessage()};
         if (!expectedMessage)
             return std::unexpected{expectedMessage.error()};
 
@@ -185,13 +186,13 @@ handleClientUpdate(network::Connection& connection,
     }
 
     // send input payload after update
-    protocol::InputPayload inputPayload{.direction =
-                                            latestInput.player2.direction,
-                                        .serve = latestInput.player2.serve,
-                                        .restart = latestInput.player2.restart};
+    const protocol::InputPayload inputPayload{
+        .direction = latestInput.player2.direction,
+        .serve = latestInput.player2.serve,
+        .restart = latestInput.player2.restart};
 
-    auto encodedPayload{protocol::encodeInputPayload(inputPayload)};
-    if (auto res{connection.send(encodedPayload)}; !res.has_value())
+    const auto encodedPayload{protocol::encodeInputPayload(inputPayload)};
+    if (const auto res{connection.send(encodedPayload)}; !res.has_value())
         return std::unexpected{res.error()};
 
     return {};
@@ -204,7 +205,7 @@ int main(int argc, char* argv[]) {
     std::uniform_real_distribution<float> dist(-cfg::ball_max_serve_angle_rad,
                                                cfg::ball_max_serve_angle_rad);
 
-    auto parsedArgs{
+    const auto parsedArgs{
         cli::parseArgs(std::vector<std::string_view>(argv + 1, argv + argc))};
     if (!parsedArgs.has_value()) {
         std::cerr << parsedArgs.error() << '\n';

@@ -14,7 +14,7 @@ namespace pong::cli {
 namespace {
 // TODO: move length check out of this function; for now, if maxTokenLength ==
 // -1, do not validate
-std::expected<std::string_view, std::string>
+[[nodiscard]] std::expected<std::string_view, std::string>
 nextValue(const std::span<const std::string_view> args, std::size_t& index,
           std::size_t maxTokenLength = 10) {
     if (index + 1 >= args.size())
@@ -38,7 +38,7 @@ concept NetworkSettings =
     std::same_as<T, HostSettings> || std::same_as<T, ClientSettings>;
 
 template <NetworkSettings T>
-std::expected<T, std::string>
+[[nodiscard]] std::expected<T, std::string>
 parseNetwork(const std::span<const std::string_view> subArgs) {
     T networkSettings{};
     std::optional<std::string_view> parsedAddress;
@@ -101,7 +101,7 @@ parseNetwork(const std::span<const std::string_view> subArgs) {
     return networkSettings;
 }
 
-std::expected<LocalSettings, std::string>
+[[nodiscard]] std::expected<LocalSettings, std::string>
 parseLocal(const std::span<const std::string_view> args) {
     LocalSettings localSettings{};
     for (std::size_t i = 0; i < args.size(); ++i) {

@@ -6,7 +6,7 @@ Build simple a pong game in C++ using [raylib](https://www.raylib.com/). Require
 - Basic responsive UI: displays both player's scores in their respective corners, alongside side their names.
 - 2-player control: player 1 moves with W/S, player 2 moves with UP_ARROW/DOWN_ARROW.
 - CLI options: Supporting arguments: `-n1 [NAME]` and `-n2 [NAME]` so that each player can set their names.
-    - (optional) Online multiplayer support. A process can host by invoking: `./[GAME_BIN] host -s [IP] -p [PORT]`; similarly, a client can connect: `./[GAME_BIN] client -s [IP] -p [PORT]`. Run `./[GAME_BIN]` to play local. If online multiplayer is in action, each process will default to using W/S for movement.
+    - (optional) Online multiplayer support. A process can host by invoking: `./[GAME_BIN] host -s [IP] -p [PORT] -n [NAME]`; similarly, a client can connect: `./[GAME_BIN] client -s [IP] -p [PORT] -n [NAME]`. Run `./[GAME_BIN]` to play local. If online multiplayer is in action, each process will default to using W/S for movement.
 
 ## Phases
 
@@ -17,5 +17,6 @@ Build simple a pong game in C++ using [raylib](https://www.raylib.com/). Require
 5. **Networking prep** *(optional)*: separate input/simulation/render, fixed timestep, serializable game state. Deliverable: same gameplay, deterministic logic.
 6. **Online play over TCP** *(optional)*: `host`/`client` modes, host-authoritative sync, RAII sockets, clean disconnects. Deliverable: networked match.
 
-Each phase includes unit tests for its pure logic (math, rules, parsing, serialization).
+## Takeaways and Learning
 
+- 
