@@ -1,11 +1,9 @@
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <expected>
 #include <format>
 #include <iostream>
-#include <optional>
 #include <pong/cli.hpp>
 #include <pong/config.hpp>
 #include <pong/entities.hpp>
@@ -18,8 +16,6 @@
 #include <raylib.h>
 #include <string>
 #include <string_view>
-#include <type_traits>
-#include <variant>
 #include <vector>
 
 namespace cfg = pong::config;
@@ -27,13 +23,11 @@ namespace cli = pong::cli;
 namespace entities = pong::entities;
 namespace game = pong::game;
 namespace input = pong::input;
+namespace session = pong::session;
 namespace network = pong::network;
 namespace protocol = pong::network::protocol;
-namespace session = pong::session;
 
 namespace {
-enum class Environment : std::uint8_t { Local, Host, Client };
-
 void drawCenterLine() {
     for (float y = 0; y < cfg::screen_height;
          y += (cfg::dash_gap + cfg::dash_length)) {
@@ -115,6 +109,93 @@ void drawGame(const game::GameContext& gameContext,
 
     EndDrawing();
 }
+
+[[nodiscard]] std::expected<void, std::string>
+handleHostUpdate(network::Connection& connection,
+                 input::InputState& latestInput,
+                 const game::GameContext& context) {
+
+    // update player2 input
+    if (auto res{connection.receive()}; !res.has_value())
+        return std::unexpected{res.error()};
+
+    while (true) {
+        auto expectedMessage{connection.nextMessage()};
+        if (!expectedMessage)
+            return std::unexpected{expectedMessage.error()};
+
+        if (!*expectedMessage)
+            break;
+
+        const auto& message{expectedMessage->value()};
+        if (const protocol::InputPayload* expectedInputPayload{
+                std::get_if<protocol::InputPayload>(&message)}) {
+            latestInput.player2.direction = expectedInputPayload->direction;
+            latestInput.player2.restart |= expectedInputPayload->restart;
+            latestInput.player2.serve |= expectedInputPayload->serve;
+        }
+    }
+
+    // send snapshot payload after update
+    protocol::SnapshotPayload snapshotPayload{
+        .player1PaddleY = context.player1.rect.y,
+        .player2PaddleY = context.player2.rect.y,
+        .ballX = context.ball.pos.x,
+        .ballY = context.ball.pos.y,
+        .gameState = static_cast<std::uint8_t>(context.state),
+        .player1Score = static_cast<std::uint8_t>(context.player1Score),
+        .player2Score = static_cast<std::uint8_t>(context.player2Score)};
+
+    auto encodedPayload{protocol::encodeSnapshotPayload(snapshotPayload)};
+    if (auto res{connection.send(encodedPayload)}; !res.has_value())
+        return std::unexpected{res.error()};
+
+    return {};
+}
+
+[[nodiscard]] std::expected<void, std::string>
+handleClientUpdate(network::Connection& connection,
+                   const input::InputState& latestInput,
+                   game::GameContext& context) {
+
+    // update client's game context
+    if (auto res{connection.receive()}; !res.has_value())
+        return std::unexpected{res.error()};
+
+    while (true) {
+        auto expectedMessage{connection.nextMessage()};
+        if (!expectedMessage)
+            return std::unexpected{expectedMessage.error()};
+
+        if (!*expectedMessage)
+            break;
+
+        const auto& message{expectedMessage->value()};
+        if (const protocol::SnapshotPayload* expectedSnapshotPayload{
+                std::get_if<protocol::SnapshotPayload>(&message)}) {
+            context.player1.rect.y = expectedSnapshotPayload->player1PaddleY;
+            context.player2.rect.y = expectedSnapshotPayload->player2PaddleY;
+            context.ball.pos.x = expectedSnapshotPayload->ballX;
+            context.ball.pos.y = expectedSnapshotPayload->ballY;
+            context.state = static_cast<game::GameState>(
+                expectedSnapshotPayload->gameState);
+            context.player1Score = expectedSnapshotPayload->player1Score;
+            context.player2Score = expectedSnapshotPayload->player2Score;
+        }
+    }
+
+    // send input payload after update
+    protocol::InputPayload inputPayload{.direction =
+                                            latestInput.player2.direction,
+                                        .serve = latestInput.player2.serve,
+                                        .restart = latestInput.player2.restart};
+
+    auto encodedPayload{protocol::encodeInputPayload(inputPayload)};
+    if (auto res{connection.send(encodedPayload)}; !res.has_value())
+        return std::unexpected{res.error()};
+
+    return {};
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -146,22 +227,41 @@ int main(int argc, char* argv[]) {
     float dtAccumulated{0.0f};
     bool servePending{false};
     bool restartPending{false};
+    input::InputState inputState{};
+    std::optional<std::string> networkError;
 
-    while (!WindowShouldClose()) {
+    // TODO: properly handle networkErrors instead of closing the game loop
+    while (!WindowShouldClose() && !networkError) {
         dtAccumulated += std::min(GetFrameTime(), cfg::dt_max);
         servePending |= IsKeyPressed(KEY_SPACE);
         restartPending |= IsKeyPressed(KEY_R);
 
+        // TODO: properly handle networkErrors instead of closing the game loop
         // fixed update
-        while (dtAccumulated >= cfg::fixed_dt) {
-            // TODO: move building input into a helper func
-            input::InputState inputState{};
-
+        while (dtAccumulated >= cfg::fixed_dt && !networkError) {
             switch (session->env) {
             case session::Environment::Host: {
+                inputState.player1.direction = getDirection(KEY_W, KEY_S);
+                inputState.player1.serve = servePending;
+                inputState.player1.restart = restartPending;
+
+                if (auto res{handleHostUpdate(session->peer.value(), inputState,
+                                              gameContext)};
+                    !res.has_value())
+                    networkError = res.error();
+
                 break;
             }
             case session::Environment::Client: {
+                inputState.player2.direction = getDirection(KEY_UP, KEY_DOWN);
+                inputState.player2.serve = servePending;
+                inputState.player2.restart = restartPending;
+
+                if (auto res{handleClientUpdate(session->peer.value(),
+                                                inputState, gameContext)};
+                    !res.has_value())
+                    networkError = res.error();
+
                 break;
             }
             case session::Environment::Local: {
@@ -188,11 +288,19 @@ int main(int argc, char* argv[]) {
             servePending = false;
             restartPending = false;
 
+            // this should be okay since in Local mode, inputState is rebuilt on
+            // every fixed frame update
+            inputState.player2.serve = false;
+            inputState.player2.restart = false;
+
             dtAccumulated -= cfg::fixed_dt;
         }
 
         drawGame(gameContext, session->player1Name, session->player2Name);
     }
+
+    if (networkError)
+        std::cerr << std::format("network error: {}\n", *networkError);
 
     CloseWindow();
 }
